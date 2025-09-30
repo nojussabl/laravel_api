@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <title>Kontaktai</title>
+</head>
+<body>
+  <h1>Kontaktų sąrašas</h1>
+
+  <!-- Forma naujam kontaktui -->
+  <form id="contact-form">
+    <input type="text" name="name" placeholder="Vardas" required>
+    <input type="email" name="email" placeholder="El. paštas" required>
+    <input type="text" name="phone" placeholder="Telefonas">
+    <button type="submit">Pridėti</button>
+  </form>
+
+  <ul id="contacts-list"></ul>
+
+  <script>
+    const API_URL = 'http://127.0.0.1:8000/api/contacts'; // arba /contacts jei prefix web.php buvo "api"
+
+    // Užkrauna visus kontaktus
+    async function loadContacts() {
+      const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' }});
+      const contacts = await res.json();
+      const list = document.getElementById('contacts-list');
+      list.innerHTML = '';
+
+      contacts.forEach(contact => {
+        const li = document.createElement('li');
+        li.textContent = `${contact.name} (${contact.email}) ${contact.phone ?? ''} `;
+
+        // Redaguoti
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Redaguoti';
+        editBtn.onclick = () => editContact(contact);
+
+        // Ištrinti
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Ištrinti';
+        deleteBtn.onclick = () => deleteContact(contact.id);
+
+        li.appendChild(editBtn);
+        li.appendChild(deleteBtn);
+        list.appendChild(li);
+      });
+    }
+
+    // Naujo kontakto siuntimas
+    document.getElementById('contact-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!res.ok) {
+        alert('Klaida kuriant kontaktą');
+        console.error(await res.text());
+        return;
+      }
+
+      e.target.reset();
+      loadContacts();
+    });
+
+    // Trinimas
+    async function deleteContact(id) {
+      if (!confirm("Ar tikrai ištrinti?")) return;
+      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' }});
+      if (!res.ok) {
+        alert('Klaida trinant');
+        console.error(await res.text());
+      }
+      loadContacts();
+    }
+
+    // Redagavimas
+    async function editContact(contact) {
+      const newName = prompt("Vardas:", contact.name);
+      const newEmail = prompt("El. paštas:", contact.email);
+      const newPhone = prompt("Telefonas:", contact.phone ?? '');
+
+      if (!newName || !newEmail) return;
+
+      const res = await fetch(`${API_URL}/${contact.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ name: newName, email: newEmail, phone: newPhone })
+      });
+
+      if (!res.ok) {
+        alert('Klaida redaguojant');
+        console.error(await res.text());
+      }
+      loadContacts();
+    }
+
+    loadContacts();
+  </script>
+</body>
+</html>
