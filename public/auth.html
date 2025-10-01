@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <title>Prisijungimas / Registracija</title>
+</head>
+<body>
+  <h1>Prisijungti arba užsiregistruoti</h1>
+
+  <!-- Registracija -->
+  <h2>Registracija</h2>
+  <form id="register-form">
+    <input type="text" name="name" placeholder="Vardas" required>
+    <input type="email" name="email" placeholder="El. paštas" required>
+    <input type="password" name="password" placeholder="Slaptažodis" required>
+    <button type="submit">Registruotis</button>
+  </form>
+
+  <!-- Prisijungimas -->
+  <h2>Prisijungimas</h2>
+  <form id="login-form">
+    <input type="email" name="email" placeholder="El. paštas" required>
+    <input type="password" name="password" placeholder="Slaptažodis" required>
+    <button type="submit">Prisijungti</button>
+  </form>
+
+  <script>
+    const AUTH_URL = 'http://127.0.0.1:8000/api';
+
+    // Registracija
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch(`${AUTH_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const json = await res.json();
+      if (res.ok && json.token) {
+        alert('Registracija sėkminga, peradresuojama...');
+        window.location.href = `contact.html?token=${encodeURIComponent(json.token)}`;
+      } else {
+        alert('Registracija nepavyko');
+        console.error(json);
+      }
+    });
+
+    // Prisijungimas
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+
+      const res = await fetch(`${AUTH_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      const json = await res.json();
+      if (res.ok && json.token) {
+        alert('Prisijungimas sėkmingas, peradresuojama...');
+        window.location.href = `contact.html?token=${encodeURIComponent(json.token)}`;
+      } else {
+        alert('Prisijungimas nepavyko');
+        console.error(json);
+      }
+    });
+  </script>
+</body>
+</html>

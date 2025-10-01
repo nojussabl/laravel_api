@@ -7,6 +7,9 @@
 <body>
   <h1>Kontaktų sąrašas</h1>
 
+  <!-- Logout -->
+  <button id="logout-btn">Atsijungti</button>
+
   <!-- Forma naujam kontaktui -->
   <form id="contact-form">
     <input type="text" name="name" placeholder="Vardas" required>
@@ -18,36 +21,58 @@
   <ul id="contacts-list"></ul>
 
   <script>
-    const API_URL = 'http://127.0.0.1:8000/api/contacts'; // arba /contacts jei prefix web.php buvo "api"
+    const API_URL = 'http://127.0.0.1:8000/api/contacts';
+    const AUTH_URL = 'http://127.0.0.1:8000/api';
 
-    // Užkrauna visus kontaktus
+    // Read token from query string
+    const urlParams = new URLSearchParams(window.location.search);
+    let token = urlParams.get('token');
+
+    if (!token) {
+      alert('Prašome prisijungti');
+      window.location.href = 'auth.html';
+    }
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await fetch(`${AUTH_URL}/logout`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+      });
+      token = null;
+      window.location.href = 'auth.html';
+    });
+
     async function loadContacts() {
-      const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' }});
+      const res = await fetch(API_URL, {
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        console.error(await res.text());
+        if (res.status === 401) {
+          alert('Sesija pasibaigė, prisijunkite iš naujo');
+          window.location.href = 'auth.html';
+        }
+        return;
+      }
       const contacts = await res.json();
       const list = document.getElementById('contacts-list');
       list.innerHTML = '';
-
       contacts.forEach(contact => {
         const li = document.createElement('li');
-        li.textContent = `${contact.name} (${contact.email}) ${contact.phone ?? ''} `;
-
-        // Redaguoti
+        li.textContent = `${contact.name} (${contact.email}) ${contact.phone ?? ''}`;
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Redaguoti';
         editBtn.onclick = () => editContact(contact);
-
-        // Ištrinti
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = 'Ištrinti';
         deleteBtn.onclick = () => deleteContact(contact.id);
-
         li.appendChild(editBtn);
         li.appendChild(deleteBtn);
         list.appendChild(li);
       });
     }
 
-    // Naujo kontakto siuntimas
     document.getElementById('contact-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
@@ -57,7 +82,8 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(data)
       });
@@ -72,38 +98,33 @@
       loadContacts();
     });
 
-    // Trinimas
     async function deleteContact(id) {
       if (!confirm("Ar tikrai ištrinti?")) return;
-      const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json' }});
-      if (!res.ok) {
-        alert('Klaida trinant');
-        console.error(await res.text());
-      }
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) { alert('Klaida trinant'); console.error(await res.text()); }
       loadContacts();
     }
 
-    // Redagavimas
     async function editContact(contact) {
       const newName = prompt("Vardas:", contact.name);
       const newEmail = prompt("El. paštas:", contact.email);
       const newPhone = prompt("Telefonas:", contact.phone ?? '');
-
       if (!newName || !newEmail) return;
 
       const res = await fetch(`${API_URL}/${contact.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ name: newName, email: newEmail, phone: newPhone })
       });
 
-      if (!res.ok) {
-        alert('Klaida redaguojant');
-        console.error(await res.text());
-      }
+      if (!res.ok) { alert('Klaida redaguojant'); console.error(await res.text()); }
       loadContacts();
     }
 
